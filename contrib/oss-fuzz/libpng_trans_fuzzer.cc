@@ -1,4 +1,4 @@
-// libpng_read_fuzzer.cc
+// libpng_transform_fuzzer.cc
 // Copyright 2017-2018 Glenn Randers-Pehrson
 // Copyright 2015 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that may
@@ -108,6 +108,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
     return 0;
   }
 
+
   PngObjectHandler png_handler;
   png_handler.png_ptr = nullptr;
   png_handler.row_ptr = nullptr;
@@ -178,13 +179,31 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
     return 0;
   }
 
+  // End of portion copied from libpng_read_fuzzer.cc.
+  // Reading is the same, so we can use the same code.
+
+  // Time to do transforms!
+  
   // Set several transforms that browsers typically use:
   png_set_gray_to_rgb(png_handler.png_ptr);
-  png_set_expand(png_handler.png_ptr);
+  png_set_expand_16(png_handler.png_ptr);
   png_set_packing(png_handler.png_ptr);
   png_set_scale_16(png_handler.png_ptr);
   png_set_tRNS_to_alpha(png_handler.png_ptr);
+  
+  // Background color (white):
+  png_color_16 background = {0, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF};
 
+  png_set_background_fixed(png_handler.png_ptr, &background, PNG_BACKGROUND_GAMMA_SCREEN, 1, 0);
+
+  // Quantization, which is complex.
+  png_color_struct palette[16];
+
+  png_set_quantize(png_handler.png_ptr, palette, 0, 16, NULL, 1);
+
+  // RGB -> Gray (after gray to RGB, but it doesn't matter):
+  png_set_rgb_to_gray_fixed(png_handler.png_ptr, PNG_ERROR_ACTION_ERROR, 0, 0);
+  
   int passes = png_set_interlace_handling(png_handler.png_ptr);
 
   png_read_update_info(png_handler.png_ptr, png_handler.info_ptr);
@@ -199,25 +218,6 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
                    static_cast<png_bytep>(png_handler.row_ptr), nullptr);
     }
   }
-
-  png_read_end(png_handler.png_ptr, png_handler.end_info_ptr);
-
-  PNG_CLEANUP
-
-#ifdef PNG_SIMPLIFIED_READ_SUPPORTED
-  // Simplified READ API
-  png_image image;
-  memset(&image, 0, (sizeof image));
-  image.version = PNG_IMAGE_VERSION;
-
-  if (!png_image_begin_read_from_memory(&image, data, size)) {
-    return 0;
-  }
-
-  image.format = PNG_FORMAT_RGBA;
-  std::vector<png_byte> buffer(PNG_IMAGE_SIZE(image));
-  png_image_finish_read(&image, NULL, buffer.data(), 0, NULL);
-#endif
 
   return 0;
 }
