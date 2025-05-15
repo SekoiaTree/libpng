@@ -102,6 +102,39 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
     return 0;
   }
 
+  int complex_retcode = fuzzer_complex_read_api(data, size);
+  if (complex_retcode) {
+    return complex_retcode;
+  }
+
+#ifdef PNG_SIMPLIFIED_READ_SUPPORTED
+  // Simplified READ API
+  png_image image;
+  memset(&image, 0, (sizeof image));
+  image.version = PNG_IMAGE_VERSION;
+
+  if (!png_image_begin_read_from_memory(&image, data, size)) {
+    return 0;
+  }
+
+  image.format = PNG_FORMAT_RGBA;
+  std::vector<png_byte> buffer(PNG_IMAGE_SIZE(image));
+
+  // Background color (white):
+  png_color background = {255, 255, 255};
+
+  // Colormap (empty, but needs to have enough space for 256 entries (each of 4 uint16_t)):
+  // Allocated in the stack, so no need to free it.
+  png_uint_16 colormap[256*4] = {};
+
+  png_image_finish_read(&image, &background, buffer.data(), 0, colormap);
+#endif
+
+  return 0;
+}
+
+extern "C" int fuzzer_complex_read_api(const uint8_t* data, size_t size) {
+  
   std::vector<unsigned char> v(data, data + size);
   if (png_sig_cmp(v.data(), 0, kPngHeaderSize)) {
     // not a PNG.
@@ -203,29 +236,6 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   png_read_end(png_handler.png_ptr, png_handler.end_info_ptr);
 
   PNG_CLEANUP
-
-#ifdef PNG_SIMPLIFIED_READ_SUPPORTED
-  // Simplified READ API
-  png_image image;
-  memset(&image, 0, (sizeof image));
-  image.version = PNG_IMAGE_VERSION;
-
-  if (!png_image_begin_read_from_memory(&image, data, size)) {
-    return 0;
-  }
-
-  image.format = PNG_FORMAT_RGBA;
-  std::vector<png_byte> buffer(PNG_IMAGE_SIZE(image));
-
-  // Background color (white):
-  png_color background = {255, 255, 255};
-
-  // Colormap (empty, but needs to have enough space for 256 entries (each of 4 uint16_t)):
-  // Allocated in the stack, so no need to free it.
-  png_uint_16 colormap[256*4] = {};
-
-  png_image_finish_read(&image, &background, buffer.data(), 0, colormap);
-#endif
 
   return 0;
 }
