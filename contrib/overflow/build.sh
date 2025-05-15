@@ -1,3 +1,4 @@
+autoupdate
 autoreconf -f -i
 ./configure
 make -j$(nproc) clean
