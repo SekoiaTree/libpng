@@ -224,7 +224,8 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
     return 0;
   }
 
-  image.format = PNG_FORMAT_RGBA;
+  // Unsure why it did this...
+  // image.format = PNG_FORMAT_RGBA;
   std::vector<png_byte> buffer(PNG_IMAGE_SIZE(image));
 
   // Background color (white):
