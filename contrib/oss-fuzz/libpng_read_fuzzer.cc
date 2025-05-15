@@ -216,7 +216,15 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
 
   image.format = PNG_FORMAT_RGBA;
   std::vector<png_byte> buffer(PNG_IMAGE_SIZE(image));
-  png_image_finish_read(&image, NULL, buffer.data(), 0, NULL);
+
+  // Background color (white):
+  png_color background = {255, 255, 255};
+
+  // Colormap (empty, but needs to have enough space for 256 entries (each of 4 uint16_t)):
+  // Allocated in the stack, so no need to free it.
+  png_uint_16 colormap[256*4] = {};
+
+  png_image_finish_read(&image, &background, buffer.data(), 0, colormap);
 #endif
 
   return 0;
